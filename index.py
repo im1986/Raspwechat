@@ -25,16 +25,16 @@ urls = (
 )
 
 
-my_appid = 'wxc2b8f6925c3ec62f' #填写你的appid
-my_secret = '7a446fb3c18404f3e2c01b0eb119256f' #填写你的app secret
-my_yeekey = '27917ff3453e3da5fd2a395c3db2562d'#填写你的 yeekey
+my_appid = 'wxc2b8f6925c3ec62' #填写你的appid
+my_secret = '7a446fb3c18404f3e2c01b0eb119256' #填写你的app secret
+my_yeekey = '27917ff3453e3da5fd2a395c3db2562'#填写你的 yeekey
  
 def _check_hash(data):
     signature=data.signature
     timestamp=data.timestamp
     nonce=data.nonce
     #自己的token
-    token="ming1007" #这里改写你在微信公众平台里输入的token
+    token="ming100" #这里改写你在微信公众平台里输入的token
     #字典序排序
     list=[token,timestamp,nonce]
     list.sort()
