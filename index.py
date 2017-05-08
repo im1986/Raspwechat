@@ -17,34 +17,24 @@ from yeelink import YeeLinkClient
 from yeelink import current_time
 
 #传感器位置
-#LIGHTPORT = 11 #继电器pin11 GPIO17 
-LIGHTPORT =  #填写你的继电器接口
-TEMPERPORT =  #填写你的温度传感器接口
-LUMPORT =  #填写你的光线传感器接口
-BODYPORT =  #填写你的人体传感器接口
-MOTORPORT = [,,,] #步进电机IN1,IN2,IN3,IN4
 
-global flagab #人体感应全局标记
-flagab = 0
-
-global flagal #光线感应全局标记
-flagal = 0
+channel = 4
  
 urls = (
 '/weixin','WeixinInterface'
 )
 
 
-my_appid = '你的appid' #填写你的appid
-my_secret = '你的app secret' #填写你的app secret
-my_yeekey = '你的yeekey'#填写你的 yeekey
+my_appid = 'wxc2b8f6925c3ec62f' #填写你的appid
+my_secret = '7a446fb3c18404f3e2c01b0eb119256f' #填写你的app secret
+my_yeekey = '27917ff3453e3da5fd2a395c3db2562d'#填写你的 yeekey
  
 def _check_hash(data):
     signature=data.signature
     timestamp=data.timestamp
     nonce=data.nonce
     #自己的token
-    token="你的token" #这里改写你在微信公众平台里输入的token
+    token="ming1007" #这里改写你在微信公众平台里输入的token
     #字典序排序
     list=[token,timestamp,nonce]
     list.sort()
@@ -92,7 +82,7 @@ def _do_click_SNAPSHOT(server, fromUser, toUser, xml):
     data = None 
     err_msg = 'snapshot fail: '
     try:
-        data = _take_snapshot('127.0.0.1', 8001, server.client)
+        data = _take_snapshot('127.0.0.1', 8080, server.client)
     except Exception, e:
         err_msg += str(e)
         print '_do_click_SNAPSHOT', err_msg
@@ -105,129 +95,72 @@ def _take_snapshot(addr, port, client):
     resp = urllib2.urlopen(req, timeout = 2)
     return client.media.upload.file(type='image', pic=resp)
 
-def _do_click_V1001_C_LEFT(server, fromUser, toUser, xml):
-    GPIO.setwarnings(False) 
-    GPIO.setmode(GPIO.BOARD)
-    arr = [0,1,2,3];
-    for p in MOTORPORT:
-        GPIO.setup(p,GPIO.OUT)
-    for x in range(0,50):
-        for j in arr:
-            time.sleep(0.01)
-            for i in range(0,4):
-                if i == j:            
-                    GPIO.output(MOTORPORT[i],True)
-                else:
-                    GPIO.output(MOTORPORT[i],False)
-    return server._reply_text(fromUser, toUser, u"摄像头云台已向左旋转45度")
-
-def _do_click_V1001_C_RIGHT(server, fromUser, toUser, xml):
-    GPIO.setwarnings(False) 
-    GPIO.setmode(GPIO.BOARD)
-    arr = [3,2,1,0];
-    for p in MOTORPORT:
-        GPIO.setup(p,GPIO.OUT)
-    for x in range(0,50):
-        for j in arr:
-            time.sleep(0.01)
-            for i in range(0,4):
-                if i == j:            
-                    GPIO.output(MOTORPORT[i],True)
-                else:
-                    GPIO.output(MOTORPORT[i],False)
-    return server._reply_text(fromUser, toUser, u"摄像头云台已向右旋转45度")
-
 def _do_click_V1001_TEMPERATURES(server, fromUser, toUser, xml):
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BOARD)
-    time.sleep(1)
-    data=[]
-    def delay(i): #20*i usdelay
-        a=0
-        for j in range(i):
-            a+1
-    j=0
-    #start work
-    GPIO.setup(TEMPERPORT,GPIO.OUT)
-    GPIO.output(TEMPERPORT,GPIO.LOW)
-    time.sleep(0.02)
-    GPIO.output(TEMPERPORT,GPIO.HIGH)
-    i=1
-    #wait to response
-    GPIO.setup(TEMPERPORT,GPIO.IN)
-    while GPIO.input(TEMPERPORT)==1:
-        continue
+  data = []
+  j = 0
 
-    while GPIO.input(TEMPERPORT)==0:
-        continue
+  GPIO.setmode(GPIO.BCM)
+  time.sleep(1)
+  GPIO.setup(channel, GPIO.OUT)
+  GPIO.output(channel, GPIO.LOW)
+  time.sleep(0.02)
+  GPIO.output(channel, GPIO.HIGH)
+  GPIO.setup(channel, GPIO.IN)
 
-    while GPIO.input(TEMPERPORT)==1:
-            continue
-    #get data
-    while j<40:
-        k=0
-        while GPIO.input(TEMPERPORT)==0:
-            continue
-    
-        while GPIO.input(TEMPERPORT)==1:
-            k+=1
-            if k>100:break
-        if k<3:
-            data.append(0)
-        else:
-            data.append(1)
-        j+=1
+  while GPIO.input(channel) == GPIO.LOW:
+       continue
 
-    #get temperature
-    humidity_bit=data[0:8]
-    humidity_point_bit=data[8:16]
-    temperature_bit=data[16:24]
-    temperature_point_bit=data[24:32]
-    check_bit=data[32:40]
+  while GPIO.input(channel) == GPIO.HIGH:
+       continue
 
-    humidity=0
-    humidity_point=0
-    temperature=0
-    temperature_point=0
-    check=0
+  while j < 40:
+       k = 0
+       while GPIO.input(channel) == GPIO.LOW:
+           continue
 
-    for i in range(8):
-        humidity+=humidity_bit[i]*2**(7-i)
-        humidity_point+=humidity_point_bit[i]*2**(7-i)
-        temperature+=temperature_bit[i]*2**(7-i)
-        temperature_point+=temperature_point_bit[i]*2**(7-i)
-        check+=check_bit[i]*2**(7-i)
+       while GPIO.input(channel) == GPIO.HIGH:
+           k += 1
+           if k > 100:
+               break
+       if k < 15:
+           data.append(0)
+       else:
+           data.append(1)
 
-    tmp=humidity+humidity_point+temperature+temperature_point
-    if check==tmp:
-        reply_temp = "室内温度: %d℃\n室内湿度: %d" %(temperature, humidity)
-        return server._reply_text(fromUser, toUser, reply_temp)
+       j += 1
+
+  #print "sensor is working."
+  #print data
+
+  humidity_bit = data[0:8]
+  humidity_point_bit = data[8:16]
+  temperature_bit = data[16:24]
+  temperature_point_bit = data[24:32]
+  check_bit = data[32:40]
+
+  humidity_point = 0
+  temperature_point = 0
+  check = 0
+  temperature = 0
+  humidity = 0
+
+  for i in range(8):
+       humidity += humidity_bit[i] * 2 ** (7 - i)
+       humidity_point += humidity_point_bit[i] * 2 ** (7 - i)
+       temperature += temperature_bit[i] * 2 ** (7 - i)
+       temperature_point += temperature_point_bit[i] * 2 ** (7 - i)
+       check += check_bit[i] * 2 ** (7 - i)
+
+  tmp = humidity + humidity_point + temperature + temperature_point
+  GPIO.cleanup()
+  if check==tmp:
+      reply_temp = "温度: %d℃\n湿度: %d％" %(temperature, humidity)
+      return server._reply_text(fromUser, toUser, reply_temp)
         
-    else:
-        print "something is worong the humidity,humidity_point,temperature,temperature_point,check is",humidity,humidity_point,temperature,temperature_point,check
-        return server._reply_text(fromUser, toUser, u"温度校验失败，请重新获取温度")
-            
-
-def _do_click_V1001_LED_ON(server, fromUser, toUser, xml):
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(LIGHTPORT,GPIO.OUT)
-    GPIO.setup(LIGHTPORT,GPIO.LOW)
-    return server._reply_text(fromUser, toUser, u"电灯开")
-
-def _do_click_V1001_LED_OFF(server, fromUser, toUser, xml):
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(LIGHTPORT,GPIO.OUT)
-    GPIO.setup(LIGHTPORT,GPIO.HIGH)
-    return server._reply_text(fromUser, toUser, u"电灯关")
-	
-def _do_click_V1001_AUTOSAFE(server, fromUser, toUser, xml):
-    return _do_change_ALARM(server, fromUser, toUser, xml)
-    
-def _do_click_V1001_AUTOLED(server, fromUser, toUser, xml):
-    return _do_change_LIGHT(server, fromUser, toUser, xml)
-    
+  else:
+      print "something is worong the humidity,humidity_point,temperature,temperature_point,check is",humidity,humidity_point,temperature,temperature_point,check
+      return _do_click_V1001_TEMPERATURES(server, fromUser, toUser, xml)
+           
 def _do_click_V1001_HELP(server, fromUser, toUser, xml):
     return server._reply_text(fromUser, toUser, u'''此微信公众平台基于树莓派，可以随时随地的以微信端为控制器，与终端进行交互。具体功能请点击菜单选项 ''')
 
@@ -236,145 +169,13 @@ def _do_click_V1001_HELP(server, fromUser, toUser, xml):
 _weixin_click_table = {
     
     'V1001_SNAPSHOT'        :   _do_click_SNAPSHOT,
-    'V1001_C_LEFT'          :   _do_click_V1001_C_LEFT,
-    'V1001_C_RIGHT'         :   _do_click_V1001_C_RIGHT,
     'V1001_TEMPERATURES'    :   _do_click_V1001_TEMPERATURES,
-    'V1001_LED_ON'          :   _do_click_V1001_LED_ON,
-    'V1001_LED_OFF'         :   _do_click_V1001_LED_OFF,
     'V1001_HELP'            :   _do_click_V1001_HELP,
-    'V1001_AUTOSAFE'        :   _do_click_V1001_AUTOSAFE,
-    'V1001_AUTOLED'         :   _do_click_V1001_AUTOLED
+
 	
 }
 
 
-
-def _do_change_LIGHT(server, fromUser, toUser, xml):
-    global flagal #光线感应标记
-    if flagal == 0:
-        try:
-            al = threading.Thread(target=_auto_control_light)
-            al.setDaemon(True)
-            al.start()
-            flagal = 1
-            return server._reply_text(fromUser, toUser, u"自动光控开")
-        except:
-            print "Error: unable to start thread"
-            flagal = 0
-            return server._reply_text(fromUser, toUser, u"自动光控没有成功开启")
-    else:
-        flagal = 0
-        return server._reply_text(fromUser, toUser, u"自动光控关")
-
-def _do_change_ALARM(server, fromUser, toUser, xml):
-    global flagab #人体感应标记
-    if flagab == 0:
-        try:
-            ab = threading.Thread(target=_auto_control_body)
-            ab.setDaemon(True)
-            ab.start()
-            flagab = 1
-            return server._reply_text(fromUser, toUser, u"检测报警开")
-        except:
-            print "Error: unable to start thread"
-            flagab = 0
-            return server._reply_text(fromUser, toUser, u"检测报警没有成功开启")
-    else:
-        flagab = 0
-        return server._reply_text(fromUser, toUser, u"检测报警关")
-        
-
-def _auto_control_light():
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BOARD) 
-    GPIO.setup(LUMPORT,GPIO.IN)
-    GPIO.setup(LIGHTPORT,GPIO.OUT)
-
-    wc = WeiXinClient(my_appid, my_secret, fc=True, path='/tmp')
-    wc.request_access_token()
-    rjson = wc.user.get._get(next_openid=None)
-    count = rjson.count
-    id_list = rjson.data.openid
-    while count < rjson.total:
-        rjson = wc.user.get._get(next_openid=rjson.next_openid)
-        count += rjson.count
-        id_list.extend(rjson.openid)
-    # 最后看看都有哪些用户
-    #print id_list
-    while flagal == 1:
-        print "auto light is working"
-        inputValue = GPIO.input(LUMPORT)
-        if(inputValue==0):
-            print("THE LED IS OFF NOW")
-            GPIO.setup(LIGHTPORT,GPIO.HIGH)
-            for uid in id_list:
-                content = '{"touser":"%s", "msgtype":"text", "text":{ "content":"The light already close"}}' %uid
-                try:
-                    print wc.message.custom.send.post(body=content)
-                except APIError, e:
-                    print e, uid
-        else:
-            print("THE LED IS ON NOW")
-            GPIO.setup(LIGHTPORT,GPIO.LOW)
-            for uid in id_list:
-                content = '{"touser":"%s", "msgtype":"text", "text":{ "content":"The light already open"}}' %uid
-                try:
-                    print wc.message.custom.send.post(body=content)
-                except APIError, e:
-                    print e, uid
-            
-        time.sleep(5.0)
-	
-
-def _auto_control_body():
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BOARD) 
-    GPIO.setup(BODYPORT,GPIO.IN)
-
-    wc = WeiXinClient(my_appid, my_secret, fc=True, path='/tmp')
-    wc.request_access_token()
-    rjson = wc.user.get._get(next_openid=None)
-    count = rjson.count
-    id_list = rjson.data.openid
-    while count < rjson.total:
-        rjson = wc.user.get._get(next_openid=rjson.next_openid)
-        count += rjson.count
-        id_list.extend(rjson.openid)
-    # 最后看看都有哪些用户
-    #print id_list
-    
-    while flagab == 1:
-        print "alarm is working"
-        inputValue = GPIO.input(BODYPORT)
-        if(inputValue!=0):
-            #发送报警文字
-            for uid in id_list:
-                content = '{"touser":"%s", "msgtype":"text", "text":{ "content":"Waring! Somebody in your Room"}}' %uid
-                #print 可以看有没有发送成功, 可以捕获api错误异常
-                try:
-                    print wc.message.custom.send.post(body=content)
-                except APIError, e:
-                    print e, uid
-
-            url = 'http://127.0.0.1:8001/?action=snapshot'
-            req = urllib2.Request(url)
-            resp = urllib2.urlopen(req, timeout = 2)
-            rjson = wc.media.upload.file(type='image', pic=resp)
-            #print rjson
-            # 把上传的图片发出去
-            for uid in id_list:
-                content = '{"touser":"%s", "msgtype":"image", ' \
-                    '"image":{ "media_id":"%s"}}' % (uid, rjson.media_id)
-                try:
-                    print wc.message.custom.send.post(body=content)
-                except APIError, e:
-                    print e, uid
-
-        time.sleep(5.0)
-
-
-
-   
 class WeixinInterface:
  
     def __init__(self):

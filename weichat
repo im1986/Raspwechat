@@ -1,0 +1,21 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides: weichat
+# Required-Start:    $remote_fs
+# Required-Stop:     $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start or stop the HTTP Proxy.
+### END INIT INFO
+case $1 in
+    start)
+        sudo python /home/pi/rwc/index.py 80
+        ;;
+    stop)
+        
+        ;;
+*)
+echo "Usage: /etc/init.d/weichat (start|stop)"
+;;
+esac
+exit 0
